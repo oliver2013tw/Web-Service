@@ -4,28 +4,27 @@
 <meta charset="UTF-8">
 <meta name="viewport"
   content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>會員系統</title>
+<title>Nova 會員系統</title>
 
 <style>
 * {
   box-sizing: border-box;
-  overscroll-behavior: none;
 }
 
 html, body {
-  margin: 0;
-  padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* 🚫 禁止上下滑 */
-  font-family: system-ui, -apple-system;
-  background: linear-gradient(160deg, #020617, #0f172a);
+  margin: 0;
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont;
+  background: radial-gradient(circle at top, #0f172a, #020617);
   color: #e5e7eb;
 }
 
 .app {
   width: 100%;
   height: 100%;
+  padding: 24px; /* 螢幕安全距離 */
   display: flex;
   justify-content: center;
   align-items: center;
@@ -34,40 +33,57 @@ html, body {
 .card {
   width: 100%;
   max-width: 420px;
-  padding: 28px;
-  border-radius: 20px;
-  background: #020617;
-  box-shadow: 0 20px 60px rgba(0,0,0,.55);
+  padding: 32px; /* 卡片內距 */
+  border-radius: 24px;
+  background: rgba(2, 6, 23, 0.92);
+  box-shadow:
+    0 20px 40px rgba(0,0,0,.5),
+    inset 0 0 0 1px rgba(255,255,255,.04);
 }
 
 h2 {
+  margin: 0 0 20px;
   text-align: center;
-  margin: 0 0 12px;
+  font-weight: 600;
 }
 
-input, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 10px;
-  font-size: 15px;
+.form-group {
+  margin-bottom: 14px;
 }
 
 input {
-  background: #020617;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 14px;
   border: 1px solid #1e293b;
+  background: #020617;
   color: #e5e7eb;
+  font-size: 15px;
+}
+
+input:focus {
+  outline: none;
+  border-color: #3b82f6;
 }
 
 button {
+  width: 100%;
+  margin-top: 18px;
+  padding: 14px;
+  border-radius: 16px;
   border: none;
-  background: #2563eb;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
   color: white;
+  font-size: 16px;
   cursor: pointer;
 }
 
+button:hover {
+  opacity: .9;
+}
+
 .switch {
-  margin-top: 14px;
+  margin-top: 18px;
   text-align: center;
   font-size: 14px;
   color: #93c5fd;
@@ -75,7 +91,7 @@ button {
 }
 
 .error {
-  margin-top: 8px;
+  margin-top: 10px;
   text-align: center;
   font-size: 13px;
   color: #f87171;
@@ -92,14 +108,14 @@ button {
 
     <!-- 註冊 -->
     <div id="registerBox">
-      <h2>建立帳號</h2>
+      <h2>建立 Nova 帳號</h2>
 
-      <input id="lastName" placeholder="姓">
-      <input id="firstName" placeholder="名">
-      <input id="nickname" placeholder="暱稱">
-      <input id="birthday" type="date">
-      <input id="email" placeholder="Email">
-      <input id="password" type="password" placeholder="密碼">
+      <div class="form-group"><input id="lastName" placeholder="姓"></div>
+      <div class="form-group"><input id="firstName" placeholder="名"></div>
+      <div class="form-group"><input id="nickname" placeholder="暱稱"></div>
+      <div class="form-group"><input id="birthday" type="date"></div>
+      <div class="form-group"><input id="email" placeholder="Email"></div>
+      <div class="form-group"><input id="password" type="password" placeholder="密碼"></div>
 
       <button id="registerBtn">註冊</button>
       <div id="registerError" class="error"></div>
@@ -111,8 +127,8 @@ button {
     <div id="loginBox" class="hidden">
       <h2>會員登入</h2>
 
-      <input id="loginEmail" placeholder="Email">
-      <input id="loginPassword" type="password" placeholder="密碼">
+      <div class="form-group"><input id="loginEmail" placeholder="Email"></div>
+      <div class="form-group"><input id="loginPassword" type="password" placeholder="密碼"></div>
 
       <button id="loginBtn">登入</button>
       <div id="loginError" class="error"></div>
@@ -137,60 +153,41 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-const registerBox = document.getElementById("registerBox");
-const loginBox = document.getElementById("loginBox");
-
-document.getElementById("toLogin").onclick = () => {
+toLogin.onclick = () => {
   registerBox.classList.add("hidden");
   loginBox.classList.remove("hidden");
 };
 
-document.getElementById("toRegister").onclick = () => {
+toRegister.onclick = () => {
   loginBox.classList.add("hidden");
   registerBox.classList.remove("hidden");
 };
 
-// 註冊（🔥 已修正）
-document.getElementById("registerBtn").onclick = async () => {
-  const err = document.getElementById("registerError");
-  err.textContent = "";
-
+registerBtn.onclick = async () => {
+  registerError.textContent = "";
   try {
-    const email = document.getElementById("email").value.trim();
-    const password = document.getElementById("password").value;
-
-    const cred = await auth.createUserWithEmailAndPassword(email, password);
-
+    const cred = await auth.createUserWithEmailAndPassword(email.value, password.value);
     await db.collection("users").doc(cred.user.uid).set({
       lastName: lastName.value,
       firstName: firstName.value,
       nickname: nickname.value,
       birthday: birthday.value,
-      email,
-      username: email,
-      role: "user",
+      email: email.value,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-
-    alert("註冊成功，請登入");
-    registerBox.classList.add("hidden");
-    loginBox.classList.remove("hidden");
-
+    alert("註冊成功");
+    toLogin.click();
   } catch (e) {
-    err.textContent = e.message;
+    registerError.textContent = e.message;
   }
 };
 
-// 登入
-document.getElementById("loginBtn").onclick = async () => {
+loginBtn.onclick = async () => {
   try {
-    await auth.signInWithEmailAndPassword(
-      loginEmail.value,
-      loginPassword.value
-    );
-    location.href = "member.html";
+    await auth.signInWithEmailAndPassword(loginEmail.value, loginPassword.value);
+    location.href = "chat.html";
   } catch {
-    document.getElementById("loginError").textContent = "登入失敗";
+    loginError.textContent = "登入失敗";
   }
 };
 </script>
