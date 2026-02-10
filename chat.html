@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Nova 聊天室</title>
+
+<style>
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: system-ui;
+  background: radial-gradient(circle at top, #020617, #000);
+  color: #e5e7eb;
+}
+
+.app {
+  height: 100%;
+  padding: 24px;
+  display: flex;
+}
+
+.chat-card {
+  flex: 1;
+  padding: 24px;
+  border-radius: 24px;
+  background: rgba(2,6,23,.94);
+  box-shadow: 0 20px 50px rgba(0,0,0,.6);
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-header {
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.messages {
+  flex: 1;
+  padding: 16px;
+  border-radius: 18px;
+  background: #020617;
+  overflow-y: auto;
+}
+
+.message {
+  max-width: 70%;
+  margin-bottom: 14px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #1e293b;
+}
+
+.me {
+  margin-left: auto;
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+
+.input-area {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #020617;
+  display: flex;
+  gap: 12px;
+}
+
+input {
+  flex: 1;
+  padding: 14px 16px;
+  border-radius: 14px;
+  border: 1px solid #1e293b;
+  background: #020617;
+  color: white;
+}
+
+button {
+  padding: 14px 20px;
+  border-radius: 14px;
+  border: none;
+  background: #2563eb;
+  color: white;
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+  <div class="chat-card">
+    <div class="chat-header">💬 Nova 會員聊天室</div>
+
+    <div class="messages" id="messages"></div>
+
+    <div class="input-area">
+      <input id="msgInput" placeholder="輸入訊息…">
+      <button id="sendBtn">送出</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyANRuFVvjE1Xsz2PaDogR-LfKRYU5HTudI",
+  authDomain: "nova-web-service.firebaseapp.com",
+  projectId: "nova-web-service"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+auth.onAuthStateChanged(user => {
+  if (!user) location.href = "index.html";
+});
+
+sendBtn.onclick = async () => {
+  if (!msgInput.value) return;
+  await db.collection("chat").add({
+    uid: auth.currentUser.uid,
+    text: msgInput.value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  msgInput.value = "";
+};
+
+db.collection("chat")
+  .orderBy("createdAt")
+  .onSnapshot(snap => {
+    messages.innerHTML = "";
+    snap.forEach(doc => {
+      const div = document.createElement("div");
+      div.className = "message" +
+        (doc.data().uid === auth.currentUser.uid ? " me" : "");
+      div.textContent = doc.data().text;
+      messages.appendChild(div);
+    });
+    messages.scrollTop = messages.scrollHeight;
+  });
+</script>
+
+</body>
+</html>
