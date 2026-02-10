@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>會員系統</title>
+
+<style>
+body {
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #0f172a;
+  font-family: system-ui;
+  color: #e5e7eb;
+}
+.card {
+  background: #020617;
+  width: 100%;
+  max-width: 380px;
+  padding: 24px;
+  border-radius: 16px;
+}
+h2 { text-align: center }
+input, button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+}
+input {
+  background: #020617;
+  color: #e5e7eb;
+  border: 1px solid #1e293b;
+}
+button {
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+.switch {
+  margin-top: 12px;
+  text-align: center;
+  color: #93c5fd;
+  cursor: pointer;
+}
+.error {
+  margin-top: 6px;
+  color: #f87171;
+  font-size: 13px;
+}
+.hidden { display: none }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+
+  <div id="registerBox">
+    <h2>註冊</h2>
+    <input id="lastName" placeholder="姓">
+    <input id="firstName" placeholder="名">
+    <input id="nickname" placeholder="暱稱">
+    <input id="birthday" type="date">
+    <input id="username" placeholder="使用者名稱（Email）">
+    <input id="password" type="password" placeholder="密碼">
+    <button onclick="register()">註冊</button>
+    <div id="registerError" class="error"></div>
+    <div class="switch" onclick="showLogin()">已有帳號？登入</div>
+  </div>
+
+  <div id="loginBox" class="hidden">
+    <h2>登入</h2>
+    <input id="loginEmail" placeholder="使用者名稱（Email）">
+    <input id="loginPassword" type="password" placeholder="密碼">
+    <button onclick="login()">登入</button>
+    <div id="loginError" class="error"></div>
+    <div class="switch" onclick="showRegister()">建立新帳號</div>
+  </div>
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyANRuFVvjE1Xsz2PaDogR-LfKRYU5HTudI",
+  authDomain: "nova-web-service.firebaseapp.com",
+  projectId: "nova-web-service"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+function showLogin() {
+  registerBox.classList.add("hidden");
+  loginBox.classList.remove("hidden");
+}
+function showRegister() {
+  loginBox.classList.add("hidden");
+  registerBox.classList.remove("hidden");
+}
+
+async function register() {
+  registerError.textContent = "";
+  const email = username.value.trim();
+  const pass = password.value;
+
+  const check = await db.collection("users")
+    .where("username","==",email).get();
+
+  if (!check.empty) {
+    registerError.textContent = "使用者名稱已存在";
+    return;
+  }
+
+  try {
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await db.collection("users").doc(cred.user.uid).set({
+      lastName: lastName.value,
+      firstName: firstName.value,
+      nickname: nickname.value,
+      birthday: birthday.value,
+      username: email,
+      email: email,
+      role: "user",
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    showLogin();
+  } catch (e) {
+    registerError.textContent = e.message;
+  }
+}
+
+async function login() {
+  try {
+    await auth.signInWithEmailAndPassword(
+      loginEmail.value, loginPassword.value
+    );
+    location.href = "member.html";
+  } catch {
+    loginError.textContent = "登入失敗";
+  }
+}
+</script>
+
+</body>
+</html>
