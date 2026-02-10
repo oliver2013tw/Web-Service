@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>會員中心</title>
+
+<style>
+body {
+  background:#0f172a;
+  color:#e5e7eb;
+  font-family:system-ui;
+  padding:20px;
+}
+.card {
+  max-width:420px;
+  margin:auto;
+  background:#020617;
+  padding:20px;
+  border-radius:16px;
+}
+input, button {
+  width:100%;
+  margin-top:8px;
+  padding:10px;
+  border-radius:8px;
+  border:none;
+}
+input {
+  background:#020617;
+  color:#e5e7eb;
+  border:1px solid #1e293b;
+}
+button {
+  background:#2563eb;
+  color:white;
+}
+.admin { background:#16a34a }
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h2>會員中心</h2>
+  <div id="info"></div>
+
+  <h3>編輯資料</h3>
+  <input id="editNickname" placeholder="暱稱">
+  <input id="editBirthday" type="date">
+  <button onclick="save()">儲存</button>
+
+  <button id="adminBtn" class="admin" style="display:none"
+    onclick="location.href='admin.html'">管理後台</button>
+
+  <button onclick="logout()">登出</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyANRuFVvjE1Xsz2PaDogR-LfKRYU5HTudI",
+  authDomain: "nova-web-service.firebaseapp.com",
+  projectId: "nova-web-service"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+auth.onAuthStateChanged(async user => {
+  if (!user) location.href="index.html";
+  const doc = await db.collection("users").doc(user.uid).get();
+  const d = doc.data();
+
+  info.innerHTML = `
+    姓名：${d.lastName}${d.firstName}<br>
+    暱稱：${d.nickname}<br>
+    生日：${d.birthday}<br>
+    身份：${d.role}
+  `;
+
+  editNickname.value = d.nickname;
+  editBirthday.value = d.birthday;
+
+  if (d.role === "admin") adminBtn.style.display="block";
+});
+
+function save() {
+  const u = auth.currentUser;
+  db.collection("users").doc(u.uid).update({
+    nickname: editNickname.value,
+    birthday: editBirthday.value
+  });
+}
+
+function logout() {
+  auth.signOut();
+}
+</script>
+
+</body>
+</html>
