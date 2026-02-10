@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>管理員後台</title>
+
+<style>
+body {
+  background:#0f172a;
+  color:#e5e7eb;
+  font-family:system-ui;
+  padding:20px;
+}
+.card {
+  background:#020617;
+  padding:16px;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+select {
+  padding:6px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>會員管理</h2>
+<div id="list"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+firebase.initializeApp({
+  apiKey: "AIzaSyANRuFVvjE1Xsz2PaDogR-LfKRYU5HTudI",
+  authDomain: "nova-web-service.firebaseapp.com",
+  projectId: "nova-web-service"
+});
+
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+auth.onAuthStateChanged(async user => {
+  if (!user) location.href="index.html";
+
+  const me = await db.collection("users").doc(user.uid).get();
+  if (me.data().role !== "admin") {
+    alert("權限不足");
+    location.href="member.html";
+  }
+
+  const snap = await db.collection("users").get();
+  snap.forEach(doc => {
+    const u = doc.data();
+    list.innerHTML += `
+      <div class="card">
+        <b>${u.email}</b><br>
+        暱稱：${u.nickname}<br>
+        身份：
+        <select onchange="setRole('${doc.id}',this.value)">
+          <option ${u.role==="user"?"selected":""}>user</option>
+          <option ${u.role==="admin"?"selected":""}>admin</option>
+        </select>
+      </div>
+    `;
+  });
+});
+
+function setRole(uid, role) {
+  db.collection("users").doc(uid).update({ role });
+}
+</script>
+
+</body>
+</html>
