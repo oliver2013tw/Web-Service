@@ -2,36 +2,47 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport"
+  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>會員系統</title>
 
 <style>
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  overscroll-behavior: none;
+}
 
-body {
+html, body {
   margin: 0;
-  min-height: 100vh;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* 🚫 禁止上下滑 */
+  font-family: system-ui, -apple-system;
+  background: linear-gradient(160deg, #020617, #0f172a);
+  color: #e5e7eb;
+}
+
+.app {
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(160deg, #020617, #0f172a);
-  font-family: system-ui, -apple-system;
-  color: #e5e7eb;
-  padding: 20px;
 }
 
 .card {
   width: 100%;
   max-width: 420px;
-  background: #020617;
   padding: 28px;
   border-radius: 20px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+  background: #020617;
+  box-shadow: 0 20px 60px rgba(0,0,0,.55);
 }
 
 h2 {
   text-align: center;
-  margin-top: 0;
+  margin: 0 0 12px;
 }
 
 input, button {
@@ -49,14 +60,10 @@ input {
 }
 
 button {
-  background: #2563eb;
   border: none;
+  background: #2563eb;
   color: white;
   cursor: pointer;
-}
-
-button:hover {
-  background: #1d4ed8;
 }
 
 .switch {
@@ -69,9 +76,9 @@ button:hover {
 
 .error {
   margin-top: 8px;
-  color: #f87171;
-  font-size: 13px;
   text-align: center;
+  font-size: 13px;
+  color: #f87171;
 }
 
 .hidden { display: none; }
@@ -80,41 +87,42 @@ button:hover {
 
 <body>
 
-<div class="card">
+<div class="app">
+  <div class="card">
 
-  <!-- 註冊 -->
-  <div id="registerBox">
-    <h2>建立帳號</h2>
+    <!-- 註冊 -->
+    <div id="registerBox">
+      <h2>建立帳號</h2>
 
-    <input id="lastName" placeholder="姓">
-    <input id="firstName" placeholder="名">
-    <input id="nickname" placeholder="暱稱">
-    <input id="birthday" type="date">
-    <input id="email" placeholder="使用者名稱（Email）">
-    <input id="password" type="password" placeholder="密碼">
+      <input id="lastName" placeholder="姓">
+      <input id="firstName" placeholder="名">
+      <input id="nickname" placeholder="暱稱">
+      <input id="birthday" type="date">
+      <input id="email" placeholder="Email">
+      <input id="password" type="password" placeholder="密碼">
 
-    <button id="registerBtn">註冊</button>
-    <div id="registerError" class="error"></div>
+      <button id="registerBtn">註冊</button>
+      <div id="registerError" class="error"></div>
 
-    <div class="switch" id="toLogin">已有帳號？登入</div>
+      <div class="switch" id="toLogin">已有帳號？登入</div>
+    </div>
+
+    <!-- 登入 -->
+    <div id="loginBox" class="hidden">
+      <h2>會員登入</h2>
+
+      <input id="loginEmail" placeholder="Email">
+      <input id="loginPassword" type="password" placeholder="密碼">
+
+      <button id="loginBtn">登入</button>
+      <div id="loginError" class="error"></div>
+
+      <div class="switch" id="toRegister">建立帳號</div>
+    </div>
+
   </div>
-
-  <!-- 登入 -->
-  <div id="loginBox" class="hidden">
-    <h2>會員登入</h2>
-
-    <input id="loginEmail" placeholder="Email">
-    <input id="loginPassword" type="password" placeholder="密碼">
-
-    <button id="loginBtn">登入</button>
-    <div id="loginError" class="error"></div>
-
-    <div class="switch" id="toRegister">建立新帳號</div>
-  </div>
-
 </div>
 
-<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -129,7 +137,6 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-// DOM
 const registerBox = document.getElementById("registerBox");
 const loginBox = document.getElementById("loginBox");
 
@@ -143,42 +150,24 @@ document.getElementById("toRegister").onclick = () => {
   registerBox.classList.remove("hidden");
 };
 
-// 註冊
+// 註冊（🔥 已修正）
 document.getElementById("registerBtn").onclick = async () => {
-  const lastName = document.getElementById("lastName").value.trim();
-  const firstName = document.getElementById("firstName").value.trim();
-  const nickname = document.getElementById("nickname").value.trim();
-  const birthday = document.getElementById("birthday").value;
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value;
-
-  const errorBox = document.getElementById("registerError");
-  errorBox.textContent = "";
-
-  if (!lastName || !firstName || !nickname || !birthday || !email || !password) {
-    errorBox.textContent = "請完整填寫所有欄位";
-    return;
-  }
-
-  // 檢查帳號重複
-  const exists = await db.collection("users")
-    .where("username", "==", email).get();
-
-  if (!exists.empty) {
-    errorBox.textContent = "此帳號已被使用";
-    return;
-  }
+  const err = document.getElementById("registerError");
+  err.textContent = "";
 
   try {
+    const email = document.getElementById("email").value.trim();
+    const password = document.getElementById("password").value;
+
     const cred = await auth.createUserWithEmailAndPassword(email, password);
 
     await db.collection("users").doc(cred.user.uid).set({
-      lastName,
-      firstName,
-      nickname,
-      birthday,
-      username: email,
+      lastName: lastName.value,
+      firstName: firstName.value,
+      nickname: nickname.value,
+      birthday: birthday.value,
       email,
+      username: email,
       role: "user",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -188,7 +177,7 @@ document.getElementById("registerBtn").onclick = async () => {
     loginBox.classList.remove("hidden");
 
   } catch (e) {
-    errorBox.textContent = e.message;
+    err.textContent = e.message;
   }
 };
 
@@ -196,8 +185,8 @@ document.getElementById("registerBtn").onclick = async () => {
 document.getElementById("loginBtn").onclick = async () => {
   try {
     await auth.signInWithEmailAndPassword(
-      document.getElementById("loginEmail").value,
-      document.getElementById("loginPassword").value
+      loginEmail.value,
+      loginPassword.value
     );
     location.href = "member.html";
   } catch {
