@@ -6,53 +6,75 @@
 <title>會員系統</title>
 
 <style>
+* { box-sizing: border-box; }
+
 body {
   margin: 0;
-  height: 100vh;
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  background: #0f172a;
-  font-family: system-ui;
+  background: linear-gradient(160deg, #020617, #0f172a);
+  font-family: system-ui, -apple-system;
   color: #e5e7eb;
+  padding: 20px;
 }
+
 .card {
-  background: #020617;
   width: 100%;
-  max-width: 380px;
-  padding: 24px;
-  border-radius: 16px;
+  max-width: 420px;
+  background: #020617;
+  padding: 28px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
 }
-h2 { text-align: center }
+
+h2 {
+  text-align: center;
+  margin-top: 0;
+}
+
 input, button {
   width: 100%;
+  padding: 12px;
   margin-top: 10px;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
+  border-radius: 10px;
+  font-size: 15px;
 }
+
 input {
   background: #020617;
-  color: #e5e7eb;
   border: 1px solid #1e293b;
+  color: #e5e7eb;
 }
+
 button {
   background: #2563eb;
+  border: none;
   color: white;
   cursor: pointer;
 }
+
+button:hover {
+  background: #1d4ed8;
+}
+
 .switch {
-  margin-top: 12px;
+  margin-top: 14px;
   text-align: center;
+  font-size: 14px;
   color: #93c5fd;
   cursor: pointer;
 }
+
 .error {
-  margin-top: 6px;
+  margin-top: 8px;
   color: #f87171;
   font-size: 13px;
+  text-align: center;
 }
-.hidden { display: none }
+
+.hidden { display: none; }
 </style>
 </head>
 
@@ -60,30 +82,39 @@ button {
 
 <div class="card">
 
+  <!-- 註冊 -->
   <div id="registerBox">
-    <h2>註冊</h2>
+    <h2>建立帳號</h2>
+
     <input id="lastName" placeholder="姓">
     <input id="firstName" placeholder="名">
     <input id="nickname" placeholder="暱稱">
     <input id="birthday" type="date">
-    <input id="username" placeholder="使用者名稱（Email）">
+    <input id="email" placeholder="使用者名稱（Email）">
     <input id="password" type="password" placeholder="密碼">
-    <button onclick="register()">註冊</button>
+
+    <button id="registerBtn">註冊</button>
     <div id="registerError" class="error"></div>
-    <div class="switch" onclick="showLogin()">已有帳號？登入</div>
+
+    <div class="switch" id="toLogin">已有帳號？登入</div>
   </div>
 
+  <!-- 登入 -->
   <div id="loginBox" class="hidden">
-    <h2>登入</h2>
-    <input id="loginEmail" placeholder="使用者名稱（Email）">
+    <h2>會員登入</h2>
+
+    <input id="loginEmail" placeholder="Email">
     <input id="loginPassword" type="password" placeholder="密碼">
-    <button onclick="login()">登入</button>
+
+    <button id="loginBtn">登入</button>
     <div id="loginError" class="error"></div>
-    <div class="switch" onclick="showRegister()">建立新帳號</div>
+
+    <div class="switch" id="toRegister">建立新帳號</div>
   </div>
 
 </div>
 
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
@@ -98,56 +129,81 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-function showLogin() {
+// DOM
+const registerBox = document.getElementById("registerBox");
+const loginBox = document.getElementById("loginBox");
+
+document.getElementById("toLogin").onclick = () => {
   registerBox.classList.add("hidden");
   loginBox.classList.remove("hidden");
-}
-function showRegister() {
+};
+
+document.getElementById("toRegister").onclick = () => {
   loginBox.classList.add("hidden");
   registerBox.classList.remove("hidden");
-}
+};
 
-async function register() {
-  registerError.textContent = "";
-  const email = username.value.trim();
-  const pass = password.value;
+// 註冊
+document.getElementById("registerBtn").onclick = async () => {
+  const lastName = document.getElementById("lastName").value.trim();
+  const firstName = document.getElementById("firstName").value.trim();
+  const nickname = document.getElementById("nickname").value.trim();
+  const birthday = document.getElementById("birthday").value;
+  const email = document.getElementById("email").value.trim();
+  const password = document.getElementById("password").value;
 
-  const check = await db.collection("users")
-    .where("username","==",email).get();
+  const errorBox = document.getElementById("registerError");
+  errorBox.textContent = "";
 
-  if (!check.empty) {
-    registerError.textContent = "使用者名稱已存在";
+  if (!lastName || !firstName || !nickname || !birthday || !email || !password) {
+    errorBox.textContent = "請完整填寫所有欄位";
+    return;
+  }
+
+  // 檢查帳號重複
+  const exists = await db.collection("users")
+    .where("username", "==", email).get();
+
+  if (!exists.empty) {
+    errorBox.textContent = "此帳號已被使用";
     return;
   }
 
   try {
-    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    const cred = await auth.createUserWithEmailAndPassword(email, password);
+
     await db.collection("users").doc(cred.user.uid).set({
-      lastName: lastName.value,
-      firstName: firstName.value,
-      nickname: nickname.value,
-      birthday: birthday.value,
+      lastName,
+      firstName,
+      nickname,
+      birthday,
       username: email,
-      email: email,
+      email,
       role: "user",
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    showLogin();
-  } catch (e) {
-    registerError.textContent = e.message;
-  }
-}
 
-async function login() {
+    alert("註冊成功，請登入");
+    registerBox.classList.add("hidden");
+    loginBox.classList.remove("hidden");
+
+  } catch (e) {
+    errorBox.textContent = e.message;
+  }
+};
+
+// 登入
+document.getElementById("loginBtn").onclick = async () => {
   try {
     await auth.signInWithEmailAndPassword(
-      loginEmail.value, loginPassword.value
+      document.getElementById("loginEmail").value,
+      document.getElementById("loginPassword").value
     );
     location.href = "member.html";
   } catch {
-    loginError.textContent = "登入失敗";
+    document.getElementById("loginError").textContent = "登入失敗";
   }
-}
+};
 </script>
 
 </body>
