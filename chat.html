@@ -14,20 +14,22 @@ html, body {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  font-family: system-ui;
+  font-family: system-ui, -apple-system;
   background: radial-gradient(circle at top, #020617, #000);
   color: #e5e7eb;
 }
 
+/* 螢幕安全距離 */
 .app {
   height: 100%;
   padding: 24px;
   display: flex;
 }
 
+/* 主卡片 */
 .chat-card {
   flex: 1;
-  padding: 24px;
+  padding: 28px;
   border-radius: 24px;
   background: rgba(2,6,23,.94);
   box-shadow: 0 20px 50px rgba(0,0,0,.6);
@@ -35,37 +37,88 @@ html, body {
   flex-direction: column;
 }
 
+/* 標題 */
 .chat-header {
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
+/* 訊息區 */
 .messages {
   flex: 1;
-  padding: 16px;
-  border-radius: 18px;
+  padding: 20px;
+  border-radius: 20px;
   background: #020617;
   overflow-y: auto;
 }
 
-.message {
-  max-width: 70%;
-  margin-bottom: 14px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: #1e293b;
+/* 單則訊息容器 */
+.message-row {
+  display: flex;
+  align-items: flex-end;
+  margin-bottom: 18px;
+  gap: 12px;
 }
 
-.me {
-  margin-left: auto;
+/* 自己的訊息靠右 */
+.message-row.me {
+  flex-direction: row-reverse;
+}
+
+/* 頭像 */
+.avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  color: white;
   background: linear-gradient(135deg, #2563eb, #3b82f6);
 }
 
-.input-area {
-  margin-top: 16px;
-  padding: 16px;
+/* 訊息氣泡 */
+.bubble {
+  max-width: 65%;
+  padding: 14px 16px;
   border-radius: 18px;
+  background: #1e293b;
+}
+
+/* 自己的氣泡 */
+.me .bubble {
+  background: linear-gradient(135deg, #2563eb, #3b82f6);
+}
+
+/* 暱稱 */
+.nickname {
+  font-size: 13px;
+  opacity: .85;
+  margin-bottom: 4px;
+}
+
+/* 內容 */
+.text {
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+/* 時間 */
+.time {
+  font-size: 11px;
+  opacity: .6;
+  margin-top: 6px;
+  text-align: right;
+}
+
+/* 輸入區 */
+.input-area {
+  margin-top: 18px;
+  padding: 18px;
+  border-radius: 20px;
   background: #020617;
   display: flex;
   gap: 12px;
@@ -81,11 +134,12 @@ input {
 }
 
 button {
-  padding: 14px 20px;
+  padding: 14px 22px;
   border-radius: 14px;
   border: none;
   background: #2563eb;
   color: white;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -94,14 +148,16 @@ button {
 
 <div class="app">
   <div class="chat-card">
+
     <div class="chat-header">💬 Nova 會員聊天室</div>
 
     <div class="messages" id="messages"></div>
 
     <div class="input-area">
-      <input id="msgInput" placeholder="輸入訊息…">
+      <input id="msgInput" placeholder="輸入訊息…" />
       <button id="sendBtn">送出</button>
     </div>
+
   </div>
 </div>
 
@@ -119,31 +175,74 @@ firebase.initializeApp({
 const auth = firebase.auth();
 const db = firebase.firestore();
 
-auth.onAuthStateChanged(user => {
-  if (!user) location.href = "index.html";
+let currentUserData = null;
+
+/* 檢查登入 & 取得使用者資料 */
+auth.onAuthStateChanged(async user => {
+  if (!user) {
+    location.href = "index.html";
+    return;
+  }
+  const doc = await db.collection("users").doc(user.uid).get();
+  currentUserData = doc.data();
 });
 
+/* 發送訊息 */
 sendBtn.onclick = async () => {
-  if (!msgInput.value) return;
+  if (!msgInput.value.trim()) return;
+
   await db.collection("chat").add({
     uid: auth.currentUser.uid,
-    text: msgInput.value,
+    text: msgInput.value.trim(),
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   });
+
   msgInput.value = "";
 };
 
+/* 格式化時間 */
+function formatTime(ts) {
+  if (!ts) return "";
+  const d = ts.toDate();
+  return d.toLocaleTimeString("zh-TW", {
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
+/* 即時監聽聊天 */
 db.collection("chat")
   .orderBy("createdAt")
-  .onSnapshot(snap => {
+  .onSnapshot(async snap => {
     messages.innerHTML = "";
-    snap.forEach(doc => {
-      const div = document.createElement("div");
-      div.className = "message" +
-        (doc.data().uid === auth.currentUser.uid ? " me" : "");
-      div.textContent = doc.data().text;
-      messages.appendChild(div);
-    });
+
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const userDoc = await db.collection("users").doc(data.uid).get();
+      const user = userDoc.data();
+
+      const row = document.createElement("div");
+      row.className = "message-row" +
+        (data.uid === auth.currentUser.uid ? " me" : "");
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar";
+      avatar.textContent = user.nickname?.charAt(0) || "?";
+
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      bubble.innerHTML = `
+        <div class="nickname">${user.nickname || "匿名"}</div>
+        <div class="text">${data.text}</div>
+        <div class="time">${formatTime(data.createdAt)}</div>
+      `;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messages.appendChild(row);
+    }
+
     messages.scrollTop = messages.scrollHeight;
   });
 </script>
